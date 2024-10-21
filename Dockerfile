@@ -1,0 +1,1 @@
+ENTRYPOINT ["python", "serve.py"]
