@@ -23,7 +23,7 @@ def apply_brightness_contrast(input_img, brightness = 0, contrast = 0):
         buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
     return buf
 
-def find_best_contours(image):
+def find_best_contours(image, verbose=False):
     """Function to find the best contour to obtain a top-down view of the image"""
     # Output image
     output_image = image.copy()
@@ -49,20 +49,23 @@ def find_best_contours(image):
         if len(largest_contour) < len_contour_area and len(largest_contour) > 100:
             len_contour_area = len(largest_contour)
             contours_with_min_len = largest_contour
-        print("The brightness", brightness, "and constrat 127 minimizes the lenth of the list of contour to", len_contour_area)
+        if verbose:
+            print("The brightness", brightness, "and constrat 127 minimizes the lenth of the list of contour to", len_contour_area)
 
     # If len_contour_area > 1000, draw rectangle instead of contour
     if len_contour_area > 2000:
         x, y, w, h = cv2.boundingRect(contours_with_min_len)
         cv2.rectangle(output_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        print("Applying rectangle instead of contour")
+        if verbose:
+            print("Applying rectangle instead of contour")
         screenCnt = np.array([[[x, y]], [[x + w, y]], [[x,y+h]], [[x+w,y+h]]])
 
     # If len_contour_area < 1000, draw contour
     else:
         peri = cv2.arcLength(contours_with_min_len, True)
         screenCnt = cv2.approxPolyDP(contours_with_min_len,  0.02*peri, True)
-        print("Applying approximated contour")
+        if verbose:
+            print("Applying approximated contour")
         cv2.drawContours(output_image, [screenCnt], -1, (0, 255, 0), 2)
     return screenCnt, output_image, gray
 
