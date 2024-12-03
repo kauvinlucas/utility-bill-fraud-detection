@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import random
 from pathlib import Path
+import os
 
 # Plotting libraries
 from PIL import ImageFont
@@ -9,7 +10,8 @@ from PIL import Image
 from PIL import ImageDraw
 
 class generator_bill_1:
-    def __init__(self, names, middle_names, last_names, addresses1, addresses2, depto_prefixes):
+    def __init__(self, names, middle_names, last_names, addresses1, addresses2, depto_prefixes, 
+                 font_regular, font_bold, full_resolution=False, fake_template = 0):
         self.short_date_format = "%m-%y"
         self.standard_date_format = "%d/%m/%y"
         self.long_date_format = "%d/%m/%Y"
@@ -20,6 +22,10 @@ class generator_bill_1:
         self.addresses1 = addresses1
         self.addresses2 = addresses2
         self.depto_prefixes = depto_prefixes
+        self.full_resolution = full_resolution
+        self.font_regular = font_regular
+        self.font_bold = font_bold
+        self.fake_template = fake_template
         self.random_with_leading_zeroes = lambda total_len, upper_limit: "0" * (total_len - len(str(random.randint(1, upper_limit))))\
                                             + str(random.randint(1, upper_limit))
 
@@ -54,6 +60,8 @@ class generator_bill_1:
             self.full_name = name + " " + last_name + " " + last_name2
         # Address generation
         self.full_address = "BARRIO " + random.choice(self.addresses1) + " " * 2 + random.choice(self.addresses2)
+        if len(self.full_address) > 43:
+            self.full_address = self.full_address[0:43] + ","
         dept_nro = str(random.randint(1,20)) if random.choice([0,1]) == 0 else str(random.randint(1,20))+random.choice(self.depto_prefixes)
         self.dept_nro = "DEPTO: " + dept_nro + "    CIUDAD: SANTA CRUZ DE LA SIERRA"
         self.uv = "UV: "+str(self.random_with_leading_zeroes(4, 250))
@@ -79,7 +87,6 @@ class generator_bill_1:
         
         # Historial dates
         consumption_periods = [datetime.strftime(self.start_date - relativedelta(months=m), self.short_date_format) for m in range(self.n)]
-        start_date_str = datetime.strftime(self.start_date, self.short_date_format)
         
         # Historical consumption
         consumption_hist_amounts_summer = [consumption_current_amount * (1 + factor) for factor in consumption_hist_factor_summer]
@@ -164,7 +171,6 @@ class generator_bill_1:
         concepts_mask = [True, rand_2dn_entry, rand_3rd_entry, rand_4th_entry, rand_5th_entry]
         self.concepts = [list(concepts_lookup.keys())[c] for c in range(5) if concepts_mask[c]]
         
-        total = 0
         self.detail_entries = "\n".join([f"{concept}" + " " * (28 - len(concept)) + " " * (8 - len(f"{concepts_lookup[concept]:.2f}")) + \
                              f"{concepts_lookup[concept]:.2f}" for concept in self.concepts])
         self.total_amount_details = sum([concepts_lookup[concept] for concept in self.concepts])
@@ -187,9 +193,14 @@ class generator_bill_1:
     def print_image(self, image_index):
         rand_v= random.randint(-5,10)
         rand_h = random.randint(-30,30)
-        font = ImageFont.truetype("fonts/CONSOLA.TTF",55)
-        font_bold = ImageFont.truetype("fonts/CONSOLAB.TTF",70)
-        img = Image.open("templates/utility_bill_1_with_cut_date.png") if self.cut_in_progress else Image.open("templates/utility_bill_1.png")
+        font = ImageFont.truetype(f'fonts/{self.font_regular}',55)
+        font_bold = ImageFont.truetype(f'fonts/{self.font_bold}',70)
+        if self.fake_template == 0:
+            img = Image.open(f"templates/utility_bill_1_with_cut_date.png") \
+            if self.cut_in_progress else Image.open(f"templates/utility_bill_1.png")
+        else:
+            img = Image.open(f"templates/utility_bill_1_fake_{self.fake_template}_with_cut_date.png") \
+                if self.cut_in_progress else Image.open(f"templates/utility_bill_1_fake_{self.fake_template}.png")
         draw = ImageDraw.Draw(img)
         # Populate header 1
         formated_texts = [self.month_bill_literal, self.start_date_str, self.due_date, 
@@ -217,14 +228,16 @@ class generator_bill_1:
             draw.text((h_positions[i] + rand_h, v_positions[i] + rand_v),formated_texts[i],(0,0,0),font=font, spacing=15)
         fixed_code = f"{random.randint(100000,999999)}"
         draw.text((3950 + rand_h, 170 + rand_v),fixed_code,(0,0,0),font=font_bold)
-        max_resolution = (1900, 1200)
-        img.thumbnail(max_resolution, Image.LANCZOS)
+        if not self.full_resolution:
+            max_resolution = (1900, 1200)
+            img.thumbnail(max_resolution, Image.LANCZOS)
         Path("data/1/").mkdir(parents=True, exist_ok=True)
         img.save(f'data/1/{image_index}.png')
 
 
 class generator_bill_2():
-    def __init__(self, names, middle_names, last_names, addresses1, addresses2, depto_prefixes):
+    def __init__(self, names, middle_names, last_names, addresses1, addresses2, depto_prefixes, 
+                 font_regular, font_bold, full_resolution=False, fake_template = 0):
         self.short_date_format = "%Y-%m"
         self.short_date_format_2 = "%m/%Y"
         self.standard_date_format = "%d/%m/%y"
@@ -236,6 +249,10 @@ class generator_bill_2():
         self.addresses1 = addresses1
         self.addresses2 = addresses2
         self.depto_prefixes = depto_prefixes
+        self.full_resolution = full_resolution
+        self.font_regular = font_regular
+        self.font_bold = font_bold
+        self.fake_template = fake_template
         self.random_with_leading_zeroes = lambda total_len, upper_limit: "0" * (total_len - len(str(random.randint(1, upper_limit))))\
                                             + str(random.randint(1, upper_limit))
 
@@ -287,9 +304,7 @@ class generator_bill_2():
         self.consumption_rate = f"{self.consumption_rate:.2f}"
     
         # Historial paid dates
-        date = self.start_date - relativedelta(months=random.choice([0,1])) - timedelta(days=random.randint(2, 20))
         state_date_lst = []
-        more_than_one_payment_counter = 0
         state_date_lst = ["IMPAGA" for i in range(random.randint(0, self.n))]
         state_date_lst_updated = ["IMPAGA" if i < len(state_date_lst) else "" for i in range(self.n)]
     
@@ -310,8 +325,10 @@ class generator_bill_2():
         self.cut_message = "SI PAGO, IGNORE ESTE MENSAJE" if self.cut == "SI" else "" 
         
         # Summing unpaid consumption
-        self.due_debt = f"{sum([amount for i, amount in enumerate(self.consumption_hist_amounts) if state_date_lst_updated[i] == "IMPAGA" and i != 0]):.2f}"
-        self.due_debt_including_actual = f"{sum([amount for i, amount in enumerate(self.consumption_hist_amounts) if state_date_lst_updated[i] == "IMPAGA"]):.2f}"
+        due_debt = sum([amount for i, amount in enumerate(self.consumption_hist_amounts) if state_date_lst_updated[i] == "IMPAGA" and i != 0])
+        self.due_debt = f"{due_debt:.2f}"
+        due_debt_including_actual = sum([amount for i, amount in enumerate(self.consumption_hist_amounts) if state_date_lst_updated[i] == "IMPAGA"])
+        self.due_debt_including_actual = f"{due_debt_including_actual:.2f}"
 
         # Summing months of unpaid consumption
         self.due_months = str(sum([1 for i, _ in enumerate(self.consumption_hist_amounts) if state_date_lst_updated[i] == "IMPAGA" and i != 0]))
@@ -335,10 +352,13 @@ class generator_bill_2():
     def print_image(self, image_index):
         rand_v= random.randint(-5,10)
         rand_h = random.randint(-30,30)
-        font = ImageFont.truetype("fonts/CONSOLA.TTF",55)
-        font_bold = ImageFont.truetype("fonts/CONSOLAB.TTF",75)
-        font_small = ImageFont.truetype("fonts/CONSOLA.TTF",35)
-        img = Image.open("templates/utility_bill_2.png")
+        font = ImageFont.truetype(f"fonts/{self.font_regular}",55)
+        font_bold = ImageFont.truetype(f"fonts/{self.font_bold}",75)
+        font_small = ImageFont.truetype(f"fonts/{self.font_regular}",35)
+        if self.fake_template == 0:
+            img = Image.open("templates/utility_bill_2.png")
+        else:
+            img = Image.open(f"templates/utility_bill_2_fake_{self.fake_template}.png")
         draw = ImageDraw.Draw(img)
         formated_texts = [self.full_name, self.category, self.start_date_str, self.full_address, self.month_year, self.due_date_str, self.dist, self.start_date_str, self.actual, self.consumption,
                   self.consumption_rate, self.previous_emision_date, self.previous, self.consumption_prev_month, self.consumption_rate, self.due_debt, self.due_months, self.cut,
@@ -349,7 +369,8 @@ class generator_bill_2():
             draw.text((h_positions[i] + rand_h, v_positions[i] + rand_v),formated_texts[i],(0,0,0),font=font, spacing=15)
         draw.text((3700 + rand_h, 215 + rand_v), str(random.randint(100000, 99999999)),(0,0,0),font=font_bold, spacing=15)
         draw.text((3550 + rand_h, 970 + rand_v), self.cut_message,(0,0,0),font=font_small, spacing=15)
-        max_resolution = (1900, 1200)
-        img.thumbnail(max_resolution, Image.LANCZOS)
+        if not self.full_resolution:
+            max_resolution = (1900, 1200)
+            img.thumbnail(max_resolution, Image.LANCZOS)
         Path("data/2/").mkdir(parents=True, exist_ok=True)
         img.save(f'data/2/{image_index}.png')
